@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Events on this day</title>
+    <style>
+      table {
+        table-layout: fixed;
+        width: 100%;
+      }
+
+      th:first-child,
+      td:first-child {
+        white-space: nowrap;
+        width: 5%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Events on this day</h1>
+    <b>Showing events for <span id="current-date"></span></b>
+    <hr>
+    <table>
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody id="events">
+      </tbody>
+    </table>
+    <script>
+      // Get the current month and day
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+
+      const monthName = now.toLocaleString('default', { month: 'long' });
+      const currentDate = `${monthName}-${day}`;
+
+      // Set the current date in the page
+      const currentDateSpan = document.getElementById("current-date");
+      currentDateSpan.textContent = currentDate;
+
+      // Make the API request
+      const url = `https://byabbe.se/on-this-day/${month}/${day}/events.json`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          // Loop through the events and add them to the table
+          const eventsTable = document.getElementById("events");
+          for (const event of data.events) {
+            const row = document.createElement("tr");
+            const yearCell = document.createElement("td");
+            const descriptionCell = document.createElement("td");
+            yearCell.textContent = event.year;
+            descriptionCell.textContent = event.description;
+            row.appendChild(yearCell);
+            row.appendChild(descriptionCell);
+            eventsTable.appendChild(row);
+          }
+        })
+        .catch(error => console.error(error));
+    </script>
+  </body>
+</html>
