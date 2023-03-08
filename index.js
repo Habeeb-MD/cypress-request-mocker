@@ -44,16 +44,16 @@ const harDirPath = `${savedResponseFolder}/hars`;
 
 let savedResponseDict = {};
 
-before(function () {
-  //This is before any suite
-  //for getting the list of all APIs endpoints for which response was saved
-  cy.task("readFile", responseListFile).then((data) => {
-    savedResponseDict = data;
-    // console.log("savedResponseDict",responseListFile, data);
-  });
-});
-
 module.exports = function requestMocker() {
+  before(function () {
+    //This is before any suite
+    //for getting the list of all APIs endpoints for which response was saved
+    cy.task("readFile", responseListFile).then((data) => {
+      savedResponseDict = data;
+      // console.log("savedResponseDict",responseListFile, data);
+    });
+  });
+
   //   const whitelistHeaderRegexes = whitelistHeaders.map((str) => RegExp(str));
 
   let isTestRecordingEnabled = false,
@@ -203,33 +203,16 @@ module.exports = function requestMocker() {
   });
 
   after(function () {
-    //after -  invoke the python function to fetch api data for recordedTests and save them for later use
+    //after -  invoke the function to fetch api data for recordedTests and save them for later use
+    //if override_existing_response is false it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
     if (recordedTestsList.length > 0) {
-      if (updateAPIresponse == false) {
-        //this is saving API response (it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
-
-        //   console.log(
-        //     `invoking task saveAPIresponse with ${baseURL +
-        //       "\n" +
-        //       savedResponseFolder +
-        //       "\n" +
-        //       recordedTestsList.toString()}`
-        //   );
-
-        cy.task("saveAPIresponse", {
-          serviceURL: baseURL,
-          savedResponseFolder: savedResponseFolder,
-          harList: recordedTestsList.toString(),
-        });
-      } else {
-        //this is also for saving API response (it will override any existing response)
-
-        cy.task("updateAPIresponse", {
-          serviceURL: baseURL,
-          savedResponseFolder: savedResponseFolder,
-          harList: recordedTestsList.toString(),
-        });
-      }
+      // console.log('saveAPIresponse',baseURL, savedResponseFolder, recordedTestsList.toString(), updateAPIresponse);
+      cy.task("saveAPIresponse", {
+        serviceURL: baseURL,
+        savedResponseFolder: savedResponseFolder,
+        harList: recordedTestsList,
+        override_existing_response: updateAPIresponse,
+      });
     }
   });
 };

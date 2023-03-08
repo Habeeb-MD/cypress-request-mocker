@@ -1,5 +1,5 @@
 const path = require("path");
-const spawn = require("child_process").spawn;
+const https = require("https");
 
 module.exports = (on, config, fs) => {
   // `on` is used to hook into various events Cypress emits
@@ -97,37 +97,93 @@ module.exports = (on, config, fs) => {
     return null;
   };
 
-  //this is saving API response (it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
-  const saveAPIresponse = ({ serviceURL, savedResponseFolder, harList }) => {
-    // console.log(serviceURL, savedResponseFolder, harList);
-    const override_existing_response = "false";
-    spawn("python", [
-      "save_api_response.py",
-      serviceURL,
+  const saveAPIresponse = ({
+    serviceURL,
+    savedResponseFolder,
+    harList,
+    override_existing_response,
+  }) => {
+    // console.log(serviceURL, savedResponseFolder, harList, override_existing_response, process.env.PWD);
+    const harDir = path.join(savedResponseFolder, "hars");
+    const apiDataDirectory = path.join(savedResponseFolder, "apiData");
+    const apiStatusCodeFile = path.join(
       savedResponseFolder,
-      harList,
-      override_existing_response,
-    ]);
-    return null;
-  };
+      "responseList.json"
+    );
 
-  //this is also for saving API response (it will override any existing response)
-  const updateAPIresponse = ({ serviceURL, savedResponseFolder, harList }) => {
-    console.log("updateAPIresponse", serviceURL, savedResponseFolder, harList);
-    const override_existing_response = "true";
-    spawn("python", [
-      "save_api_response.py",
-      serviceURL,
-      savedResponseFolder,
-      harList,
-      override_existing_response,
-    ]);
+    if (!fs.existsSync(apiDataDirectory)) {
+      fs.mkdirSync(apiDataDirectory);
+    }
+
+    let api_status_code = {};
+    try {
+      api_status_code = JSON.parse(fs.readFileSync(apiStatusCodeFile, "utf-8"));
+    } catch (e) {
+      fs.writeFileSync(apiStatusCodeFile, "{}");
+    }
+
+    const serviceList = new Set();
+
+    for (const harName of harList) {
+      const harFile = path.join(harDir, `${harName}.har`);
+      const mockApiConfig = JSON.parse(fs.readFileSync(harFile, "utf-8"));
+
+      const reqList = mockApiConfig.log.entries.map(
+        (request) => request.request.url
+      );
+      const uniqueReqList = new Set(reqList.map((url) => url.split("&iid")[0]));
+      uniqueReqList.forEach((url) => serviceList.add(url));
+    }
+    // console.log('serviceList', serviceList,'api_status_code',api_status_code);
+    if (override_existing_response == false) {
+      serviceList.forEach((url) => {
+        const ns = url.replace(serviceURL, "").replace(/[^a-zA-Z0-9]/g, "_");
+        if (ns in api_status_code) {
+          serviceList.delete(url);
+        }
+      });
+    }
+    // console.log('serviceList', serviceList);
+
+    for (const service of serviceList) {
+      https
+        .get(service, (res) => {
+          let body = "";
+          res.on("data", (chunk) => {
+            body += chunk;
+          });
+          res.on("end", () => {
+            const ns = service
+              .replace(serviceURL, "")
+              .replace(/[^a-zA-Z0-9]/g, "_");
+            let api_data = null;
+            try {
+              api_data = JSON.parse(body);
+            } catch (e) {
+              api_data = body;
+              console.log(res, "fail");
+            }
+
+            const fileName = path.join(apiDataDirectory, `${ns}.json`);
+            fs.writeFileSync(fileName, JSON.stringify(api_data));
+
+            api_status_code[ns] = res.statusCode;
+
+            fs.writeFileSync(
+              apiStatusCodeFile,
+              JSON.stringify(api_status_code)
+            );
+          });
+        })
+        .on("error", (err) => {
+          console.error(`Error while making request: ${err.message}`);
+        });
+    }
     return null;
   };
 
   on("task", {
     saveAPIresponse,
-    updateAPIresponse,
     readFile,
     deleteFile,
     cleanMocks,
