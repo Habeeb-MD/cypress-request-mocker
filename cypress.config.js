@@ -1,7 +1,7 @@
 const { defineConfig } = require("cypress");
 const fs = require("fs");
 
-const requestMocker = require("./plugin.js");
+const requestMocker = require("./plugin");
 const {
   install,
   ensureBrowserFlags,
@@ -19,8 +19,9 @@ module.exports = defineConfig({
       stubTests: [],
       recordTests: [],
       updateAPIresponse: false,
+      useCustomMakeRequest: false,
     },
-
+    video: false,
     setupNodeEvents(on, config) {
       // implement node event listeners here
 

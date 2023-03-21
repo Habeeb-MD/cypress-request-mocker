@@ -1,4 +1,4 @@
-const requestMocker = require("cypress-request-mocker");
+const requestMocker = require("../../index");
 
 describe("test mock date and record functionality", () => {
   requestMocker();

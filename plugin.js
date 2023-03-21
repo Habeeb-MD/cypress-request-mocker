@@ -1,10 +1,24 @@
 const path = require("path");
-const https = require("https");
+const axios = require("axios");
 
 module.exports = (on, config, fs) => {
+  let makeRequest =
+    require(path.join(config.projectRoot, "requestMockerUtil")) || null;
+
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
   const mocksFolder = path.resolve(config.fixturesFolder, "../mocks");
+
+  //TODO :- Handle other methods
+  const makeAPIRequest = async (service, method = "GET", params = {}) => {
+    let response;
+    try {
+      response = await axios.get(service);
+    } catch (error) {
+      console.error(error);
+    }
+    return response;
+  };
 
   //returns file content if file exists
   const readFile = (filePath) => {
@@ -97,11 +111,12 @@ module.exports = (on, config, fs) => {
     return null;
   };
 
-  const saveAPIresponse = ({
+  const saveAPIresponse = async ({
     serviceURL,
     savedResponseFolder,
     harList,
     override_existing_response,
+    useCustomMakeRequest,
   }) => {
     // console.log(serviceURL, savedResponseFolder, harList, override_existing_response, process.env.PWD);
     const harDir = path.join(savedResponseFolder, "hars");
@@ -122,7 +137,7 @@ module.exports = (on, config, fs) => {
       fs.writeFileSync(apiStatusCodeFile, "{}");
     }
 
-    const serviceList = new Set();
+    let serviceList = new Set();
 
     for (const harName of harList) {
       const harFile = path.join(harDir, `${harName}.har`);
@@ -134,7 +149,6 @@ module.exports = (on, config, fs) => {
       const uniqueReqList = new Set(reqList.map((url) => url.split("&iid")[0]));
       uniqueReqList.forEach((url) => serviceList.add(url));
     }
-    // console.log('serviceList', serviceList,'api_status_code',api_status_code);
     if (override_existing_response == false) {
       serviceList.forEach((url) => {
         const ns = url.replace(serviceURL, "").replace(/[^a-zA-Z0-9]/g, "_");
@@ -143,42 +157,30 @@ module.exports = (on, config, fs) => {
         }
       });
     }
-    // console.log('serviceList', serviceList);
+    serviceList = Array.from(serviceList);
+    makeRequest = (useCustomMakeRequest && makeRequest) || makeAPIRequest;
+    //console.log('serviceList', serviceList, 'api_status_code', api_status_code);
+    // console.log('makeRequest', makeRequest);
 
-    for (const service of serviceList) {
-      https
-        .get(service, (res) => {
-          let body = "";
-          res.on("data", (chunk) => {
-            body += chunk;
-          });
-          res.on("end", () => {
-            const ns = service
-              .replace(serviceURL, "")
-              .replace(/[^a-zA-Z0-9]/g, "_");
-            let api_data = null;
-            try {
-              api_data = JSON.parse(body);
-            } catch (e) {
-              api_data = body;
-              console.log(res, "fail");
-            }
+    const promises = serviceList.map(async (service) => {
+      const ns = service.replace(serviceURL, "").replace(/[^a-zA-Z0-9]/g, "_");
 
-            const fileName = path.join(apiDataDirectory, `${ns}.json`);
-            fs.writeFileSync(fileName, JSON.stringify(api_data));
+      try {
+        const response = await makeRequest(service);
+        const api_data = response.data;
+        api_status_code[ns] = response.status;
 
-            api_status_code[ns] = res.statusCode;
+        const fileName = path.join(apiDataDirectory, `${ns}.json`);
+        fs.writeFileSync(fileName, JSON.stringify(api_data));
+      } catch (err) {
+        console.log(err, "fail");
+      }
+    });
 
-            fs.writeFileSync(
-              apiStatusCodeFile,
-              JSON.stringify(api_status_code)
-            );
-          });
-        })
-        .on("error", (err) => {
-          console.error(`Error while making request: ${err.message}`);
-        });
-    }
+    await Promise.all(promises);
+
+    fs.writeFileSync(apiStatusCodeFile, JSON.stringify(api_status_code));
+
     return null;
   };
 

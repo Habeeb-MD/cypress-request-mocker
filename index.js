@@ -1,22 +1,22 @@
 "use strict";
 const path = require("path");
+const requestMockerConfig = Cypress.config("requestMocker") || {};
 
-const cypressConfig = Cypress.config("requestMocker") || {};
-const isRecordAll = cypressConfig.RecordAll || false;
-const recordTests = cypressConfig.recordTests || [];
-const isStubAll = cypressConfig.StubAll || true;
-const stubTests = cypressConfig.stubTests || [];
-let recordSuites = cypressConfig.recordSuites || [];
-let stubSuites = cypressConfig.stubSuite || [];
-let blacklistSuites = cypressConfig.blacklistSuites || [];
-const blacklistTests = cypressConfig.blacklistTests || [];
-const updateAPIresponse = cypressConfig.updateAPIresponse || false;
-const blacklistRoutes = cypressConfig.blacklistRoutes || [];
-const baseURL = cypressConfig.baseURL || "";
-const mockDate = cypressConfig.mockDate
-  ? new Date(cypressConfig.mockDate).getTime()
+const isRecordAll = requestMockerConfig.RecordAll || false;
+const recordTests = requestMockerConfig.recordTests || [];
+const isStubAll = requestMockerConfig.StubAll || true;
+const stubTests = requestMockerConfig.stubTests || [];
+let recordSuites = requestMockerConfig.recordSuites || [];
+let stubSuites = requestMockerConfig.stubSuite || [];
+let blacklistSuites = requestMockerConfig.blacklistSuites || [];
+const blacklistTests = requestMockerConfig.blacklistTests || [];
+const updateAPIresponse = requestMockerConfig.updateAPIresponse || false;
+const blacklistRoutes = requestMockerConfig.blacklistRoutes || [];
+const baseURL = requestMockerConfig.baseURL || "";
+const mockDate = requestMockerConfig.mockDate
+  ? new Date(requestMockerConfig.mockDate).getTime()
   : null;
-let interceptPattern = cypressConfig.interceptPattern || "*";
+let interceptPattern = requestMockerConfig.interceptPattern || "*";
 const interceptPatternFragments =
   interceptPattern.match(/\/(.*?)\/([a-z]*)?$/i);
 if (interceptPatternFragments) {
@@ -25,7 +25,8 @@ if (interceptPatternFragments) {
     interceptPatternFragments[2] || ""
   );
 }
-const whitelistHeaders = cypressConfig.whitelistHeaders || [];
+const whitelistHeaders = requestMockerConfig.whitelistHeaders || [];
+const useCustomMakeRequest = requestMockerConfig.useCustomMakeRequest || false;
 
 const fileName = path.basename(
   Cypress.spec.name,
@@ -206,12 +207,13 @@ module.exports = function requestMocker() {
     //after -  invoke the function to fetch api data for recordedTests and save them for later use
     //if override_existing_response is false it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
     if (recordedTestsList.length > 0) {
-      // console.log('saveAPIresponse',baseURL, savedResponseFolder, recordedTestsList.toString(), updateAPIresponse);
+      // console.log('saveAPIresponse',baseURL, savedResponseFolder, recordedTestsList.toString(), updateAPIresponse,useCustomMakeRequest);
       cy.task("saveAPIresponse", {
         serviceURL: baseURL,
         savedResponseFolder: savedResponseFolder,
         harList: recordedTestsList,
         override_existing_response: updateAPIresponse,
+        useCustomMakeRequest: useCustomMakeRequest,
       });
     }
   });
