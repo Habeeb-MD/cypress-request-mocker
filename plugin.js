@@ -2,8 +2,14 @@ const path = require("path");
 const axios = require("axios");
 
 module.exports = (on, config, fs) => {
-  let makeRequest =
-    require(path.join(config.projectRoot, "requestMockerUtil")) || null;
+  let makeRequest = null;
+
+  try {
+    makeRequest =
+      require(path.join(config.projectRoot, "requestMockerUtil")) || null;
+  } catch (error) {
+    console.log("The module could not be loaded:", error.message);
+  }
 
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
@@ -17,7 +23,11 @@ module.exports = (on, config, fs) => {
     } catch (error) {
       console.error(error);
     }
-    return response;
+    const resp = {
+      data: response.body || response.data,
+      status: response.status,
+    };
+    return resp;
   };
 
   //returns file content if file exists

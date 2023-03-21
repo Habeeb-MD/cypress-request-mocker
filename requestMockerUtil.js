@@ -7,7 +7,11 @@ const makeAPIRequest = async (service, method = "GET", params = {}) => {
   } catch (error) {
     console.error(error);
   }
-  return response;
+  const resp = {
+    data: response.body || response.data,
+    status: response.status,
+  };
+  return resp;
 };
 
 module.exports = makeAPIRequest;
