@@ -17,6 +17,8 @@ const mockDate = requestMockerConfig.mockDate
   ? new Date(requestMockerConfig.mockDate).getTime()
   : null;
 let interceptPattern = requestMockerConfig.interceptPattern || "*";
+const harRecordOptions = requestMockerConfig.harRecordOptions || {};
+const harSaveOptions = requestMockerConfig.harSaveOptions || {};
 const interceptPatternFragments =
   interceptPattern.match(/\/(.*?)\/([a-z]*)?$/i);
 if (interceptPatternFragments) {
@@ -139,10 +141,8 @@ module.exports = function requestMocker() {
     //Record Test(save Har)
     if (isTestRecordingEnabled) {
       // TODO Add intercept patttern here or we can ignore API while saving data
-      cy.recordHar({
-        content: false,
-        includeHosts: [new URL(baseURL).host],
-      });
+      const recordOptions = { ...harRecordOptions, content: false };
+      cy.recordHar(recordOptions);
     } else {
       isTestStubbingEnabled =
         isTestForceStub ||
@@ -202,13 +202,19 @@ module.exports = function requestMocker() {
       cy.task("createDirectoryIfNotExists", harDirPath);
       let harName = this.currentTest.title.replace(/[^a-zA-Z0-9]/g, "_");
       recordedTestsList.push(harName);
-      cy.saveHar({ outDir: harDirPath, fileName: harName });
+      const saveOptions = {
+        ...harSaveOptions,
+        outDir: harDirPath,
+        fileName: harName,
+      };
+      cy.saveHar(saveOptions);
     }
   });
 
   after(function () {
     //after -  invoke the function to fetch api data for recordedTests and save them for later use
     //if overrideExistingResponse is false it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
+    // console.log({ recordedTestsList });
     if (recordedTestsList.length > 0) {
       // console.log('saveApiResponse',baseURL, savedResponseFolder, recordedTestsList.toString(), updateApiResponse,useCustomMakeRequest);
       cy.task("saveApiResponse", {

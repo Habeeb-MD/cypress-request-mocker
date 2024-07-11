@@ -29,13 +29,12 @@ npm install cypress-request-mocker --save-dev
 
 ```javascript
 const {defineConfig} = require("cypress");
-const fs = require("fs");
 const requestMocker = require("cypress-request-mocker/plugin");
 
 module.exports = defineConfig({
     e2e: {
         setupNodeEvents(on, config) {
-            requestMocker(on, config, fs);
+            requestMocker(on, config);
         },
 // ... other configurations
     },

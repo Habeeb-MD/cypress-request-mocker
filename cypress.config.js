@@ -1,5 +1,4 @@
 const { defineConfig } = require("cypress");
-const fs = require("fs");
 
 const requestMocker = require("./plugin");
 
@@ -9,6 +8,12 @@ module.exports = defineConfig({
       mockDate: "2023-02-09",
       interceptPattern: "https://byabbe.se/on-this-day/**",
       baseURL: "https://byabbe.se/on-this-day/",
+      harRecordOptions: {
+        includeMimes: ["application/json"],
+        includeHosts: ["byabbe.se"],
+        excludePaths: [],
+      },
+      harSaveOptions: {},
       recordAll: false,
       stubAll: true,
       cleanMocks: false,
@@ -22,7 +27,7 @@ module.exports = defineConfig({
       // implement node event listeners here
 
       //requestMocker
-      requestMocker(on, config, fs);
+      requestMocker(on, config);
     },
   },
 });

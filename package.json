@@ -1,6 +1,6 @@
 {
   "name": "cypress-request-mocker",
-  "version": "1.2.5",
+  "version": "1.3.3",
   "description": "Cypress plugin for stubbing API request with some additional functionalities",
   "main": "index.js",
   "scripts": {
@@ -21,7 +21,7 @@
     "cypress": "11.2"
   },
   "dependencies": {
-    "@neuralegion/cypress-har-generator": "^5.16.1",
+    "@neuralegion/cypress-har-generator": "^5.16.4",
     "axios": "^1.3.4"
   }
 }

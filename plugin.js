@@ -1,11 +1,12 @@
 const path = require("path");
+const fs = require("fs");
 const axios = require("axios");
 const {
   install,
   ensureBrowserFlags,
 } = require("@neuralegion/cypress-har-generator");
 
-module.exports = (on, config, fs) => {
+module.exports = (on, config) => {
   let makeRequest = null;
 
   try {
@@ -20,18 +21,26 @@ module.exports = (on, config, fs) => {
   const mocksFolder = path.resolve(config.fixturesFolder, "../mocks");
 
   //TODO :- Handle other methods
-  const makeAPIRequest = async (service, method = "GET", params = {}) => {
+  const makeApiRequest = async (service, method = "GET", params = {}) => {
     let response;
     try {
       response = await axios.get(service);
+      return {
+        data: response.data || response.body,
+        status: response.status,
+      };
     } catch (error) {
-      console.error(error);
+      console.log(
+        `Error occurred while fetching data for service ${service}.
+        \nPossible reason :- \n1)API endpoint is not working atm.
+        \n2)Request needs some special auth/headers :- try to use Custom Make Request`,
+      );
+      console.log(error.toJSON());
+      return {
+        data: undefined,
+        status: error.status,
+      };
     }
-    const resp = {
-      data: response.body || response.data,
-      status: response.status,
-    };
-    return resp;
   };
 
   //returns file content if file exists
@@ -43,86 +52,136 @@ module.exports = (on, config, fs) => {
     return null;
   };
 
-  const deleteFile = (filePath) => {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+  const deleteFile = async (filePath) => {
+    if (await fs.promises.exists(filePath)) return fs.promises.unlink(filePath);
+    return null;
+  };
+
+  const deleteDirectory = async (directoryPath) => {
+    try {
+      const stat = await fs.promises.stat(directoryPath);
+      if (!stat.isDirectory()) {
+        throw new Error(`${directoryPath} is not a directory`);
+      }
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        return; // Directory does not exist, nothing to delete
+      }
+      throw err; // Rethrow other errors
+    }
+
+    const files = await fs.promises.readdir(directoryPath);
+    await Promise.all(
+      files.map(async (file) => {
+        const curPath = path.join(directoryPath, file);
+        const stat = await fs.promises.lstat(curPath);
+        if (stat.isDirectory()) {
+          await deleteDirectory(curPath);
+        } else {
+          await fs.promises.unlink(curPath);
+        }
+      }),
+    );
+
+    await fs.promises.rmdir(directoryPath);
+    return null;
+  };
+
+  const cleanMocks = async () => {
+    try {
+      const specFiles = await fs.promises.readdir(config.integrationFolder);
+      const mockFiles = await fs.promises.readdir(mocksFolder);
+
+      await Promise.all(
+        mockFiles.map(async (mockName) => {
+          const isMockUsed = specFiles.find(
+            (specName) => specName.split(".")[0] === mockName.split(".")[0],
+          );
+
+          if (!isMockUsed) {
+            const mockData = await readFile(path.join(mocksFolder, mockName));
+            await Promise.all(
+              Object.keys(mockData).map(async (testName) => {
+                await Promise.all(
+                  mockData[testName].map(async (route) => {
+                    if (route.fixtureId) {
+                      await deleteFile(
+                        path.join(
+                          config.fixturesFolder,
+                          `${route.fixtureId}.json`,
+                        ),
+                      );
+                    }
+                  }),
+                );
+              }),
+            );
+
+            await deleteFile(path.join(mocksFolder, mockName));
+          }
+        }),
+      );
+
+      return null;
+    } catch (error) {
+      console.error("Error cleaning mocks:", error);
+      throw error;
+    }
+  };
+
+  const removeAllMocks = async () => {
+    try {
+      if (await fs.promises.stat(config.fixturesFolder).catch(() => false)) {
+        const fixtureFiles = await fs.promises.readdir(config.fixturesFolder);
+        await Promise.all(
+          fixtureFiles.map(async (fileName) => {
+            const file = path.join(config.fixturesFolder, fileName);
+            const stat = await fs.promises.lstat(file);
+            if (stat.isDirectory()) {
+              await deleteDirectory(file);
+            } else {
+              await deleteFile(file);
+            }
+          }),
+        );
+      }
+
+      if (await fs.promises.stat(mocksFolder).catch(() => false)) {
+        const mockFiles = await fs.promises.readdir(mocksFolder);
+        await Promise.all(
+          mockFiles.map(async (fileName) => {
+            await deleteFile(path.join(mocksFolder, fileName));
+          }),
+        );
+      }
+      return true;
+    } catch (error) {
+      console.error("Error removing all mocks:", error);
+      throw error;
+    }
+  };
+
+  const createDirectoryIfNotExists = async (dirPath) => {
+    try {
+      await fs.promises.mkdir(dirPath, { recursive: true });
+      return null;
+    } catch (error) {
+      console.error("Error creating directory:", error);
+      throw error;
+    }
+  };
+
+  const createFileIfNotExists = async (filePath, defaultContent = "{}") => {
+    //return true if new file is created otherwise false
+    try {
+      // try to read file
+      await fs.promises.readFile(filePath);
+      return false;
+    } catch (error) {
+      // create a new file, because it wasn't found
+      await fs.promises.writeFile(filePath, defaultContent);
       return true;
     }
-
-    return null;
-  };
-
-  const deleteFolder = (directoryPath) => {
-    if (fs.existsSync(directoryPath)) {
-      fs.readdirSync(directoryPath).forEach((file, index) => {
-        const curPath = path.join(directoryPath, file);
-        if (fs.lstatSync(curPath).isDirectory()) {
-          // recurse
-          deleteFolder(curPath);
-        } else {
-          // delete file
-          fs.unlinkSync(curPath);
-        }
-      });
-      fs.rmdirSync(directoryPath);
-    }
-  };
-
-  const cleanMocks = () => {
-    // TODO: create error handling
-    const specFiles = fs.readdirSync(config.integrationFolder);
-    const mockFiles = fs.readdirSync(mocksFolder);
-    mockFiles.forEach((mockName) => {
-      const isMockUsed = specFiles.find(
-        (specName) => specName.split(".")[0] === mockName.split(".")[0],
-      );
-      if (!isMockUsed) {
-        const mockData = readFile(path.join(mocksFolder, mockName));
-        Object.keys(mockData).forEach((testName) => {
-          mockData[testName].forEach((route) => {
-            if (route.fixtureId) {
-              deleteFile(
-                path.join(config.fixturesFolder, `${route.fixtureId}.json`),
-              );
-            }
-          });
-        });
-
-        deleteFile(path.join(mocksFolder, mockName));
-      }
-    });
-
-    return null;
-  };
-
-  const removeAllMocks = () => {
-    if (fs.existsSync(config.fixturesFolder)) {
-      const fixtureFiles = fs.readdirSync(config.fixturesFolder);
-      fixtureFiles.forEach((fileName) => {
-        const file = path.join(config.fixturesFolder, fileName);
-        if (fs.lstatSync(file).isDirectory()) {
-          deleteFolder(file);
-        } else {
-          deleteFile(file);
-        }
-      });
-    }
-
-    if (fs.existsSync(mocksFolder)) {
-      const mockFiles = fs.readdirSync(mocksFolder);
-      mockFiles.forEach((fileName) => {
-        deleteFile(path.join(mocksFolder, fileName));
-      });
-    }
-
-    return null;
-  };
-
-  const createDirectoryIfNotExists = (dir_path) => {
-    fs.mkdir(dir_path, { recursive: true }, (err) => {
-      if (err) throw err;
-    });
-    return null;
   };
 
   const saveApiResponse = async ({
@@ -133,69 +192,79 @@ module.exports = (on, config, fs) => {
     useCustomMakeRequest,
   }) => {
     // console.log(serviceURL, savedResponseFolder, harList, overrideExistingResponse, process.env.PWD);
-    const harDir = path.join(savedResponseFolder, "hars");
-    const apiDataDirectory = path.join(savedResponseFolder, "apiData");
-    const apiStatusCodeFile = path.join(
-      savedResponseFolder,
-      "responseList.json",
-    );
-
-    if (!fs.existsSync(apiDataDirectory)) {
-      fs.mkdirSync(apiDataDirectory);
-    }
-
-    let api_status_code = {};
     try {
-      api_status_code = JSON.parse(fs.readFileSync(apiStatusCodeFile, "utf-8"));
-    } catch (e) {
-      fs.writeFileSync(apiStatusCodeFile, "{}");
-    }
+      const harDir = path.join(savedResponseFolder, "hars");
 
-    let serviceList = new Set();
+      const apiDataDirectory = path.join(savedResponseFolder, "apiData");
 
-    for (const harName of harList) {
-      const harFile = path.join(harDir, `${harName}.har`);
-      const mockApiConfig = JSON.parse(fs.readFileSync(harFile, "utf-8"));
-
-      const reqList = mockApiConfig.log.entries.map(
-        (request) => request.request.url,
+      const apiStatusCodeFile = path.join(
+        savedResponseFolder,
+        "responseList.json",
       );
-      const uniqueReqList = new Set(reqList.map((url) => url.split("&iid")[0]));
-      uniqueReqList.forEach((url) => serviceList.add(url));
-    }
-    if (overrideExistingResponse === false) {
-      serviceList.forEach((url) => {
-        const ns = url.replace(serviceURL, "").replace(/[^a-zA-Z0-9]/g, "_");
-        if (ns in api_status_code) {
-          serviceList.delete(url);
-        }
-      });
-    }
-    serviceList = Array.from(serviceList);
-    makeRequest = (useCustomMakeRequest && makeRequest) || makeAPIRequest;
-    //console.log('serviceList', serviceList, 'api_status_code', api_status_code);
-    // console.log('makeRequest', makeRequest);
 
-    const promises = serviceList.map(async (service) => {
-      const ns = service.replace(serviceURL, "").replace(/[^a-zA-Z0-9]/g, "_");
+      await createDirectoryIfNotExists(apiDataDirectory);
+      await createFileIfNotExists(apiStatusCodeFile);
 
-      try {
-        const response = await makeRequest(service);
-        const api_data = response.data;
-        api_status_code[ns] = response.status;
+      const apiStatusCode = JSON.parse(
+        await fs.promises.readFile(apiStatusCodeFile, "utf-8"),
+      );
+      let serviceList = [];
 
-        const fileName = path.join(apiDataDirectory, `${ns}.json`);
-        fs.writeFileSync(fileName, JSON.stringify(api_data));
-      } catch (err) {
-        console.log(err, "fail");
+      await Promise.all(
+        harList.map(async (harName) => {
+          const harFile = path.join(harDir, `${harName}.har`);
+          const mockApiConfig = JSON.parse(
+            await fs.promises.readFile(harFile, "utf-8"),
+          );
+          const reqList = mockApiConfig.log.entries.map(
+            (request) => request.request.url,
+          );
+          const uniqueReqList = new Set(
+            reqList.map((url) => url.split("&iid")[0]),
+          );
+          serviceList = serviceList.concat(...uniqueReqList);
+        }),
+      );
+
+      if (overrideExistingResponse === false) {
+        serviceList = Array.from(new Set(serviceList)).filter((url) => {
+          return !(
+            url.replace(serviceURL, "").replace(/[^a-zA-Z0-9]/g, "_") in
+            apiStatusCode
+          );
+        });
       }
-    });
 
-    await Promise.all(promises);
+      makeRequest = (useCustomMakeRequest && makeRequest) || makeApiRequest;
+      //console.log('serviceList', serviceList, 'apiStatusCode', apiStatusCode);
+      // console.log('makeRequest', makeRequest);
 
-    fs.writeFileSync(apiStatusCodeFile, JSON.stringify(api_status_code));
+      await Promise.all(
+        serviceList.map(async (service) => {
+          const ns = service
+            .replace(serviceURL, "")
+            .replace(/[^a-zA-Z0-9]/g, "_");
 
-    return null;
+          const response = await makeRequest(service);
+          const api_data = response?.data;
+          apiStatusCode[ns] = response?.status;
+
+          const fileName = path.join(apiDataDirectory, `${ns}.json`);
+          return await createFileIfNotExists(
+            fileName,
+            JSON.stringify(api_data),
+          );
+        }),
+      );
+      await fs.promises.writeFile(
+        apiStatusCodeFile,
+        JSON.stringify(apiStatusCode),
+      );
+      return true;
+    } catch (e) {
+      console.log(e);
+      throw new Error(`save api response failed - ${e}`);
+    }
   };
 
   on("task", {
