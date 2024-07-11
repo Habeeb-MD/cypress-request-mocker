@@ -74,7 +74,7 @@ module.exports = (on, config, fs) => {
     const mockFiles = fs.readdirSync(mocksFolder);
     mockFiles.forEach((mockName) => {
       const isMockUsed = specFiles.find(
-        (specName) => specName.split(".")[0] === mockName.split(".")[0]
+        (specName) => specName.split(".")[0] === mockName.split(".")[0],
       );
       if (!isMockUsed) {
         const mockData = readFile(path.join(mocksFolder, mockName));
@@ -82,7 +82,7 @@ module.exports = (on, config, fs) => {
           mockData[testName].forEach((route) => {
             if (route.fixtureId) {
               deleteFile(
-                path.join(config.fixturesFolder, `${route.fixtureId}.json`)
+                path.join(config.fixturesFolder, `${route.fixtureId}.json`),
               );
             }
           });
@@ -125,19 +125,19 @@ module.exports = (on, config, fs) => {
     return null;
   };
 
-  const saveAPIresponse = async ({
+  const saveApiResponse = async ({
     serviceURL,
     savedResponseFolder,
     harList,
-    override_existing_response,
+    overrideExistingResponse,
     useCustomMakeRequest,
   }) => {
-    // console.log(serviceURL, savedResponseFolder, harList, override_existing_response, process.env.PWD);
+    // console.log(serviceURL, savedResponseFolder, harList, overrideExistingResponse, process.env.PWD);
     const harDir = path.join(savedResponseFolder, "hars");
     const apiDataDirectory = path.join(savedResponseFolder, "apiData");
     const apiStatusCodeFile = path.join(
       savedResponseFolder,
-      "responseList.json"
+      "responseList.json",
     );
 
     if (!fs.existsSync(apiDataDirectory)) {
@@ -158,12 +158,12 @@ module.exports = (on, config, fs) => {
       const mockApiConfig = JSON.parse(fs.readFileSync(harFile, "utf-8"));
 
       const reqList = mockApiConfig.log.entries.map(
-        (request) => request.request.url
+        (request) => request.request.url,
       );
       const uniqueReqList = new Set(reqList.map((url) => url.split("&iid")[0]));
       uniqueReqList.forEach((url) => serviceList.add(url));
     }
-    if (override_existing_response == false) {
+    if (overrideExistingResponse === false) {
       serviceList.forEach((url) => {
         const ns = url.replace(serviceURL, "").replace(/[^a-zA-Z0-9]/g, "_");
         if (ns in api_status_code) {
@@ -199,7 +199,7 @@ module.exports = (on, config, fs) => {
   };
 
   on("task", {
-    saveAPIresponse,
+    saveApiResponse,
     readFile,
     deleteFile,
     cleanMocks,

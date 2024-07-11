@@ -2,15 +2,15 @@
 const path = require("path");
 const requestMockerConfig = Cypress.config("requestMocker") || {};
 
-const isRecordAll = requestMockerConfig.RecordAll || false;
+const isRecordAll = requestMockerConfig.recordAll || false;
 const recordTests = requestMockerConfig.recordTests || [];
-const isStubAll = requestMockerConfig.StubAll || true;
+const isStubAll = requestMockerConfig.stubAll || true;
 const stubTests = requestMockerConfig.stubTests || [];
 let recordSuites = requestMockerConfig.recordSuites || [];
 let stubSuites = requestMockerConfig.stubSuite || [];
 let blacklistSuites = requestMockerConfig.blacklistSuites || [];
 const blacklistTests = requestMockerConfig.blacklistTests || [];
-const updateAPIresponse = requestMockerConfig.updateAPIresponse || false;
+const updateApiResponse = requestMockerConfig.updateApiResponse || false;
 const blacklistRoutes = requestMockerConfig.blacklistRoutes || [];
 const baseURL = requestMockerConfig.baseURL || "";
 const mockDate = requestMockerConfig.mockDate
@@ -22,7 +22,7 @@ const interceptPatternFragments =
 if (interceptPatternFragments) {
   interceptPattern = new RegExp(
     interceptPatternFragments[1],
-    interceptPatternFragments[2] || ""
+    interceptPatternFragments[2] || "",
   );
 }
 const whitelistHeaders = requestMockerConfig.whitelistHeaders || [];
@@ -30,13 +30,13 @@ const useCustomMakeRequest = requestMockerConfig.useCustomMakeRequest || false;
 
 const fileName = path.basename(
   Cypress.spec.name,
-  path.extname(Cypress.spec.name)
+  path.extname(Cypress.spec.name),
 );
 // The replace fixes Windows path handling
 const fixturesFolder = Cypress.config("fixturesFolder").replace(/\\/g, "/");
 const savedResponseFolder = path.join(
   fixturesFolder,
-  "savedResponse/" + fileName.replace(/[^a-zA-Z0-9]/g, "_")
+  "savedResponse/" + fileName.replace(/[^a-zA-Z0-9]/g, "_"),
 );
 const fixturesFolderSubDirectory =
   savedResponseFolder.replace(fixturesFolder, "") + "/apiData";
@@ -176,6 +176,9 @@ module.exports = function requestMocker() {
           req.reply({
             statusCode: savedResponseDict[fixtureName],
             fixture: fixturePath,
+            headers: {
+              "X-Stubbed-Response": "true",
+            },
           });
         } else {
           console.log("not found :- " + fixtureName);
@@ -205,14 +208,14 @@ module.exports = function requestMocker() {
 
   after(function () {
     //after -  invoke the function to fetch api data for recordedTests and save them for later use
-    //if override_existing_response is false it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
+    //if overrideExistingResponse is false it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
     if (recordedTestsList.length > 0) {
-      // console.log('saveAPIresponse',baseURL, savedResponseFolder, recordedTestsList.toString(), updateAPIresponse,useCustomMakeRequest);
-      cy.task("saveAPIresponse", {
+      // console.log('saveApiResponse',baseURL, savedResponseFolder, recordedTestsList.toString(), updateApiResponse,useCustomMakeRequest);
+      cy.task("saveApiResponse", {
         serviceURL: baseURL,
         savedResponseFolder: savedResponseFolder,
         harList: recordedTestsList,
-        override_existing_response: updateAPIresponse,
+        overrideExistingResponse: updateApiResponse,
         useCustomMakeRequest: useCustomMakeRequest,
       });
     }
