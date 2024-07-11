@@ -2,10 +2,6 @@ const { defineConfig } = require("cypress");
 const fs = require("fs");
 
 const requestMocker = require("./plugin");
-const {
-  install,
-  ensureBrowserFlags,
-} = require("@neuralegion/cypress-har-generator");
 
 module.exports = defineConfig({
   e2e: {
@@ -27,14 +23,6 @@ module.exports = defineConfig({
 
       //requestMocker
       requestMocker(on, config, fs);
-
-      //cypress-har-generator
-      install(on);
-
-      on("before:browser:launch", (browser = {}, launchOptions) => {
-        ensureBrowserFlags(browser, launchOptions);
-        return launchOptions;
-      });
     },
   },
 });

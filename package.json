@@ -1,6 +1,6 @@
 {
   "name": "cypress-request-mocker",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Cypress plugin for stubbing API request with some additional functionalities",
   "main": "index.js",
   "scripts": {
@@ -10,13 +10,13 @@
   "author": "habeeb",
   "repository": {
     "type": "git",
-    "url": "https://github.com/habeeb-99/cypress-request-mocker"
+    "url": "https://github.com/Habeeb-MD/cypress-request-mocker"
   },
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/habeeb-99/cypress-request-mocker/issues"
+    "url": "https://github.com/Habeeb-MD/cypress-request-mocker/issues"
   },
-  "homepage": "https://github.com/habeeb-99/cypress-request-mocker#readme",
+  "homepage": "https://github.com/Habeeb-MD/cypress-request-mocker#readme",
   "devDependencies": {
     "cypress": "11.2"
   },

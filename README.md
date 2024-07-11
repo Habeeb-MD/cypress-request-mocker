@@ -26,25 +26,11 @@ npm install cypress-request-mocker --save-dev
 const { defineConfig } = require("cypress");
 const fs = require("fs");
 const requestMocker = require("cypress-request-mocker/plugin");
-const {
-  install,
-  ensureBrowserFlags,
-} = require("@neuralegion/cypress-har-generator");
 
 module.exports = defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
-        //requestMocker
         requestMocker(on, config, fs);
-
-        //cypress-har-generator
-        install(on);
-
-        on("before:browser:launch", (browser = {}, launchOptions) => {
-            ensureBrowserFlags(browser, launchOptions);
-            return launchOptions;
-        });
-
     },
     // ... other configurations
   },

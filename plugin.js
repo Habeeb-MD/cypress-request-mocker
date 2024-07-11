@@ -1,5 +1,9 @@
 const path = require("path");
 const axios = require("axios");
+const {
+  install,
+  ensureBrowserFlags,
+} = require("@neuralegion/cypress-har-generator");
 
 module.exports = (on, config, fs) => {
   let makeRequest = null;
@@ -201,5 +205,11 @@ module.exports = (on, config, fs) => {
     cleanMocks,
     removeAllMocks,
     createDirectoryIfNotExists,
+  });
+
+  install(on);
+  on("before:browser:launch", (browser = {}, launchOptions) => {
+    ensureBrowserFlags(browser, launchOptions);
+    return launchOptions;
   });
 };
