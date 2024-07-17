@@ -14,6 +14,7 @@ under test.
 - Custom request handling capabilities
 - Automatic cleanup of unused mocks
 - Updating of existing API responses
+- Configurable HAR recording and saving options
 
 ## Installation
 
@@ -58,6 +59,12 @@ module.exports = defineConfig({
             mockDate: "2023-02-09",
             interceptPattern: "https://api.example.com/**",
             baseURL: "https://api.example.com/",
+            harRecordOptions: {
+                includeMimes: ["application/json"],
+                includeHosts: ["api.example.com"],
+                excludePaths: [],
+            },
+            harSaveOptions: {},
             recordAll: false,
             stubAll: true,
             cleanMocks: false,
@@ -80,9 +87,11 @@ module.exports = defineConfig({
 | `mockDate`             | Date to be used for mocking       | `null`  |
 | `interceptPattern`     | Pattern for intercepting requests | `"*"`   |
 | `baseURL`              | Base URL for API requests         | `""`    |
+| `harRecordOptions`     | Options for HAR recording         | `{}`    |
+| `harSaveOptions`       | Options for saving HAR files      | `{}`    |
 | `recordAll`            | Record all tests by default       | `false` |
 | `stubAll`              | Stub all tests by default         | `true`  |
-| `cleanMocks`           | Clean up mock data                | `false` |
+| `cleanMocks`           | Clean up the unused mock data     | `false` |
 | `stubTests`            | Array of test names to stub       | `[]`    |
 | `recordTests`          | Array of test names to record     | `[]`    |
 | `blacklistTests`       | Array of test names to blacklist  | `[]`    |

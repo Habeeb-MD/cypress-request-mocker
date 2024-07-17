@@ -8,10 +8,10 @@ const isStubAll = requestMockerConfig.stubAll || true;
 const stubTests = requestMockerConfig.stubTests || [];
 let recordSuites = requestMockerConfig.recordSuites || [];
 let stubSuites = requestMockerConfig.stubSuite || [];
-let blacklistSuites = requestMockerConfig.blacklistSuites || [];
-const blacklistTests = requestMockerConfig.blacklistTests || [];
-const updateApiResponse = requestMockerConfig.updateApiResponse || false;
-const blacklistRoutes = requestMockerConfig.blacklistRoutes || [];
+let blacklistedSuites = requestMockerConfig.blacklistSuites || [];
+const blacklistedTests = requestMockerConfig.blacklistTests || [];
+const overrideApiResponse = requestMockerConfig.overrideApiResponse || false;
+const blacklistedRoutes = requestMockerConfig.blacklistRoutes || [];
 const baseURL = requestMockerConfig.baseURL || "";
 const mockDate = requestMockerConfig.mockDate
   ? new Date(requestMockerConfig.mockDate).getTime()
@@ -80,7 +80,7 @@ module.exports = function requestMocker() {
     //remove [x] from the test title if Test is BlackedlistedForced
     if (isTestBlackedlistedForced) {
       this.currentTest.title = this.currentTest.title.split("[x]")[1].trim();
-      blacklistTests.push(this.currentTest.title);
+      blacklistedTests.push(this.currentTest.title);
     }
 
     //remove [x] from the suite title and add suite to blacklistSuites for other test
@@ -88,7 +88,7 @@ module.exports = function requestMocker() {
       this.currentTest.parent.title = this.currentTest.parent.title
         .split("[x]")[1]
         .trim();
-      blacklistSuites.push(this.currentTest.parent.title);
+      blacklistedSuites.push(this.currentTest.parent.title);
     }
 
     //remove [r] from the test title if Test is isTestForceRecord
@@ -122,8 +122,8 @@ module.exports = function requestMocker() {
     isBlacklisted =
       isTestBlackedlistedForced ||
       isSuiteBlackedlistedForced ||
-      blacklistTests.includes(this.currentTest.title) ||
-      blacklistSuites.includes(this.currentTest.parent.title);
+      blacklistedTests.includes(this.currentTest.title) ||
+      blacklistedSuites.includes(this.currentTest.parent.title);
 
     //if Blacklisted do not stub/record/mockDate
     if (isBlacklisted) {
@@ -216,12 +216,12 @@ module.exports = function requestMocker() {
     //if overrideExistingResponse is false it will not override existing response, usually it is preferred to avoid duplicate API calls and save time)
     // console.log({ recordedTestsList });
     if (recordedTestsList.length > 0) {
-      // console.log('saveApiResponse',baseURL, savedResponseFolder, recordedTestsList.toString(), updateApiResponse,useCustomMakeRequest);
+      // console.log('saveApiResponse',baseURL, savedResponseFolder, recordedTestsList.toString(), overrideApiResponse,useCustomMakeRequest);
       cy.task("saveApiResponse", {
         serviceURL: baseURL,
         savedResponseFolder: savedResponseFolder,
         harList: recordedTestsList,
-        overrideExistingResponse: updateApiResponse,
+        overrideExistingResponse: overrideApiResponse,
         useCustomMakeRequest: useCustomMakeRequest,
       });
     }

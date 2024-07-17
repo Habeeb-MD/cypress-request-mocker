@@ -19,7 +19,7 @@ module.exports = defineConfig({
       cleanMocks: false,
       stubTests: [],
       recordTests: [],
-      updateApiResponse: false,
+      overrideApiResponse: false,
       useCustomMakeRequest: false,
     },
     video: false,
